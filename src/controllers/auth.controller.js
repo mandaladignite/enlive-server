@@ -20,9 +20,19 @@ const generateAccessAndRefreshTokens = async (userId) => {
     }
 };
 
-// Register a new user
+// Register a new user (Customer or Guest only)
 const registerUser = asyncHandler(async (req, res) => {
     const { name, email, password, role = "customer", phone } = req.body;
+
+    // Restrict admin registration through regular signup
+    if (role === "admin") {
+        throw new ApiError(403, "Admin accounts cannot be created through regular registration. Contact system administrator.");
+    }
+
+    // Ensure only customer or guest roles are allowed
+    if (role && !["customer", "guest"].includes(role)) {
+        throw new ApiError(400, "Invalid role. Only 'customer' or 'guest' roles are allowed for registration.");
+    }
 
     // Check if user already exists
     const existedUser = await User.findOne({ email });
@@ -35,7 +45,7 @@ const registerUser = asyncHandler(async (req, res) => {
         name,
         email,
         password,
-        role,
+        role: role || "customer", // Default to customer if no role specified
         phone
     });
 
@@ -48,6 +58,37 @@ const registerUser = asyncHandler(async (req, res) => {
 
     return res.status(201).json(
         new ApiResponse(200, createdUser, "User registered successfully")
+    );
+});
+
+// Create admin user (Developer only - for initial setup)
+const createAdminUser = asyncHandler(async (req, res) => {
+    const { name, email, password, phone } = req.body;
+
+    // Check if user already exists
+    const existedUser = await User.findOne({ email });
+    if (existedUser) {
+        throw new ApiError(409, "User with email already exists");
+    }
+
+    // Create admin user
+    const user = await User.create({
+        name,
+        email,
+        password,
+        role: "admin",
+        phone
+    });
+
+    // Get user details without password
+    const createdUser = await User.findById(user._id).select("-password -refreshToken");
+
+    if (!createdUser) {
+        throw new ApiError(500, "Something went wrong while creating the admin user");
+    }
+
+    return res.status(201).json(
+        new ApiResponse(200, createdUser, "Admin user created successfully")
     );
 });
 
@@ -343,6 +384,7 @@ const deleteUserById = asyncHandler(async (req, res) => {
 
 export {
     registerUser,
+    createAdminUser,
     loginUser,
     logoutUser,
     getUserProfile,

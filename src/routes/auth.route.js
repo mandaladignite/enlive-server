@@ -1,6 +1,7 @@
 import express from "express";
 import {
     registerUser,
+    createAdminUser,
     loginUser,
     logoutUser,
     getUserProfile,
@@ -22,7 +23,14 @@ const registerValidation = [
     body("name").trim().notEmpty().withMessage("Name is required").isLength({ max: 50 }).withMessage("Name cannot exceed 50 characters"),
     body("email").isEmail().withMessage("Please enter a valid email").normalizeEmail(),
     body("password").isLength({ min: 6 }).withMessage("Password must be at least 6 characters"),
-    body("role").optional().isIn(["guest", "customer", "admin"]).withMessage("Invalid role"),
+    body("role").optional().isIn(["guest", "customer"]).withMessage("Invalid role. Only 'guest' or 'customer' roles are allowed for registration"),
+    body("phone").optional().isMobilePhone().withMessage("Please enter a valid phone number")
+];
+
+const createAdminValidation = [
+    body("name").trim().notEmpty().withMessage("Name is required").isLength({ max: 50 }).withMessage("Name cannot exceed 50 characters"),
+    body("email").isEmail().withMessage("Please enter a valid email").normalizeEmail(),
+    body("password").isLength({ min: 6 }).withMessage("Password must be at least 6 characters"),
     body("phone").optional().isMobilePhone().withMessage("Please enter a valid phone number")
 ];
 
@@ -53,6 +61,9 @@ const updateUserValidation = [
 router.post("/register", registerValidation, registerUser);
 router.post("/login", loginValidation, loginUser);
 router.post("/refresh-token", refreshAccessToken);
+
+// Developer only route (for initial admin setup)
+router.post("/create-admin", createAdminValidation, createAdminUser);
 
 // Protected routes (require authentication)
 router.post("/logout", verifyJWT, logoutUser);
