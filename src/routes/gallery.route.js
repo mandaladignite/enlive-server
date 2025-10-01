@@ -30,8 +30,8 @@ router.get(
     [
         query("category")
             .optional()
-            .isIn(["Hair", "Skin", "Nail", "Bridal"])
-            .withMessage("Category must be one of: Hair, Skin, Nail, Bridal"),
+            .isIn(["Hair", "Skin", "Nail", "Body"])
+            .withMessage("Category must be one of: Hair, Skin, Nail, Body"),
         query("featured")
             .optional()
             .isBoolean()
@@ -46,7 +46,7 @@ router.get(
             .withMessage("Limit must be between 1 and 100"),
         query("sortBy")
             .optional()
-            .isIn(["createdAt", "views", "likes", "title", "sortOrder"])
+            .isIn(["createdAt", "title", "sortOrder"])
             .withMessage("Invalid sort field"),
         query("sortOrder")
             .optional()
@@ -72,8 +72,8 @@ router.get(
     "/category/:category",
     [
         param("category")
-            .isIn(["Hair", "Skin", "Nail", "Bridal"])
-            .withMessage("Category must be one of: Hair, Skin, Nail, Bridal"),
+            .isIn(["Hair", "Skin", "Nail", "Body"])
+            .withMessage("Category must be one of: Hair, Skin, Nail, Body"),
         query("subcategory")
             .optional()
             .trim()
@@ -112,8 +112,8 @@ router.get(
             .withMessage("Search query is required"),
         query("category")
             .optional()
-            .isIn(["Hair", "Skin", "Nail", "Bridal"])
-            .withMessage("Category must be one of: Hair, Skin, Nail, Bridal"),
+            .isIn(["Hair", "Skin", "Nail", "Body"])
+            .withMessage("Category must be one of: Hair, Skin, Nail, Body"),
         query("page")
             .optional()
             .isInt({ min: 1 })
@@ -145,8 +145,8 @@ router.post(
             .isLength({ min: 1, max: 100 })
             .withMessage("Title is required and must be between 1 and 100 characters"),
         body("category")
-            .isIn(["Hair", "Skin", "Nail", "Bridal"])
-            .withMessage("Category must be one of: Hair, Skin, Nail, Bridal"),
+            .isIn(["Hair", "Skin", "Nail", "Body"])
+            .withMessage("Category must be one of: Hair, Skin, Nail, Body"),
         body("description")
             .optional()
             .trim()
@@ -208,10 +208,11 @@ router.post(
 router.post(
     "/upload/multiple",
     uploadMultiple('images', 10),
+    adminOnly,
     [
         body("category")
-            .isIn(["Hair", "Skin", "Nail", "Bridal"])
-            .withMessage("Category must be one of: Hair, Skin, Nail, Bridal"),
+            .isIn(["Hair", "Skin", "Nail", "Body"])
+            .withMessage("Category must be one of: Hair, Skin, Nail, Body"),
         body("subcategory")
             .optional()
             .trim()
@@ -251,7 +252,6 @@ router.post(
             })
     ],
     validate,
-    adminOnly,
     uploadMultipleImages
 );
 
@@ -409,8 +409,8 @@ router.get(
     [
         query("category")
             .optional()
-            .isIn(["Hair", "Skin", "Nail", "Bridal"])
-            .withMessage("Category must be one of: Hair, Skin, Nail, Bridal"),
+            .isIn(["Hair", "Skin", "Nail", "Body"])
+            .withMessage("Category must be one of: Hair, Skin, Nail, Body"),
         query("subcategory")
             .optional()
             .trim()
@@ -434,7 +434,7 @@ router.get(
             .withMessage("Limit must be between 1 and 100"),
         query("sortBy")
             .optional()
-            .isIn(["createdAt", "views", "likes", "title", "sortOrder"])
+            .isIn(["createdAt", "title", "sortOrder"])
             .withMessage("Invalid sort field"),
         query("sortOrder")
             .optional()

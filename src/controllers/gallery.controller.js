@@ -2,7 +2,7 @@ import { Gallery } from "../models/gallery.model.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { uploadToCloudinary, deleteFromCloudinary, generateImageTransformations } from "../utils/cloudinary.js";
+import { uploadToCloudinary, deleteFromCloudinary, generateImageTransformations, validateCloudinaryConfig } from "../utils/cloudinary.js";
 
 // Public: Get all gallery images
 export const getAllGalleryImages = asyncHandler(async (req, res) => {
@@ -83,8 +83,6 @@ export const getGalleryImage = asyncHandler(async (req, res) => {
         throw new ApiError(404, "Image not found");
     }
 
-    // Increment view count
-    await image.incrementViews();
 
     res.status(200).json(
         new ApiResponse(200, image, "Gallery image retrieved successfully")
@@ -151,11 +149,7 @@ export const getGalleryStats = asyncHandler(async (req, res) => {
     res.status(200).json(
         new ApiResponse(200, {
             overview: stats[0] || {
-                totalImages: 0,
-                totalViews: 0,
-                totalLikes: 0,
-                totalFileSize: 0,
-                averageFileSize: 0
+                totalImages: 0
             },
             categoryBreakdown
         }, "Gallery statistics retrieved successfully")
@@ -164,6 +158,9 @@ export const getGalleryStats = asyncHandler(async (req, res) => {
 
 // Admin: Upload single image
 export const uploadImage = asyncHandler(async (req, res) => {
+    // Validate Cloudinary configuration
+    validateCloudinaryConfig();
+    
     const {
         title,
         description,
@@ -183,11 +180,7 @@ export const uploadImage = asyncHandler(async (req, res) => {
     // Upload to Cloudinary
     const uploadResult = await uploadToCloudinary(req.file, {
         folder: 'salon-gallery',
-        category: category.toLowerCase(),
-        transformation: {
-            quality: 'auto',
-            fetch_format: 'auto'
-        }
+        category: category.toLowerCase()
     });
 
     // Parse tags if provided as string
@@ -216,7 +209,6 @@ export const uploadImage = asyncHandler(async (req, res) => {
         cloudinaryPublicId: uploadResult.public_id,
         cloudinarySecureUrl: uploadResult.secure_url,
         originalFileName: req.file.originalname,
-        fileSize: uploadResult.bytes,
         dimensions: {
             width: uploadResult.width,
             height: uploadResult.height
@@ -236,6 +228,23 @@ export const uploadImage = asyncHandler(async (req, res) => {
 
 // Admin: Upload multiple images
 export const uploadMultipleImages = asyncHandler(async (req, res) => {
+    // Validate Cloudinary configuration
+    validateCloudinaryConfig();
+    
+    console.log('=== UPLOAD MULTIPLE IMAGES DEBUG ===');
+    console.log('req.method:', req.method);
+    console.log('req.url:', req.url);
+    console.log('req.headers.content-type:', req.headers['content-type']);
+    console.log('req.body:', req.body);
+    console.log('req.files:', req.files?.length);
+    console.log('req.files details:', req.files);
+    
+    // Safety check for req.body
+    if (!req.body) {
+        console.log('ERROR: req.body is undefined');
+        throw new ApiError(400, "Request body is undefined. Please check the request format.");
+    }
+    
     const {
         category,
         subcategory,
@@ -244,7 +253,12 @@ export const uploadMultipleImages = asyncHandler(async (req, res) => {
         metadata
     } = req.body;
 
+    console.log('Extracted category:', category);
+    console.log('Category type:', typeof category);
+    console.log('All body fields:', Object.keys(req.body));
+
     if (!req.files || req.files.length === 0) {
+        console.log('ERROR: No files uploaded');
         throw new ApiError(400, "Image files are required");
     }
 
@@ -261,11 +275,7 @@ export const uploadMultipleImages = asyncHandler(async (req, res) => {
         try {
             const uploadResult = await uploadToCloudinary(file, {
                 folder: 'salon-gallery',
-                category: category.toLowerCase(),
-                transformation: {
-                    quality: 'auto',
-                    fetch_format: 'auto'
-                }
+                category: category.toLowerCase()
             });
 
             uploadResults.push(uploadResult);
@@ -296,7 +306,6 @@ export const uploadMultipleImages = asyncHandler(async (req, res) => {
                 cloudinaryPublicId: uploadResult.public_id,
                 cloudinarySecureUrl: uploadResult.secure_url,
                 originalFileName: file.originalname,
-                fileSize: uploadResult.bytes,
                 dimensions: {
                     width: uploadResult.width,
                     height: uploadResult.height
@@ -561,9 +570,6 @@ export const getImageAnalytics = asyncHandler(async (req, res) => {
 
     const analytics = {
         image: image.getImageInfo(),
-        views: image.views,
-        likes: image.likes,
-        engagement: image.views > 0 ? (image.likes / image.views * 100).toFixed(2) : 0,
         createdAt: image.createdAt,
         updatedAt: image.updatedAt
     };
@@ -588,7 +594,7 @@ export const getGalleryDashboardStats = asyncHandler(async (req, res) => {
             .limit(5)
             .populate('uploadedBy', 'name email'),
         Gallery.find({ isActive: true })
-            .sort({ views: -1 })
+            .sort({ createdAt: -1 })
             .limit(5)
             .populate('uploadedBy', 'name email')
     ]);
@@ -596,11 +602,7 @@ export const getGalleryDashboardStats = asyncHandler(async (req, res) => {
     res.status(200).json(
         new ApiResponse(200, {
             overview: totalStats[0] || {
-                totalImages: 0,
-                totalViews: 0,
-                totalLikes: 0,
-                totalFileSize: 0,
-                averageFileSize: 0
+                totalImages: 0
             },
             categoryBreakdown,
             recentUploads,

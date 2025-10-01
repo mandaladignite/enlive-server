@@ -364,6 +364,65 @@ export const getPackageStats = asyncHandler(async (req, res) => {
     );
 });
 
+// Get all packages for admin (Admin only)
+export const getAllPackagesAdmin = asyncHandler(async (req, res) => {
+    const { 
+        isActive, 
+        isPopular, 
+        minPrice, 
+        maxPrice, 
+        sortBy = 'createdAt', 
+        sortOrder = 'desc',
+        page = 1, 
+        limit = 10,
+        search
+    } = req.query;
+
+    // Build filter object - admin can see all packages including inactive ones
+    const filter = {};
+    if (isActive !== undefined) filter.isActive = isActive === 'true';
+    if (isPopular !== undefined) filter.isPopular = isPopular === 'true';
+    if (minPrice || maxPrice) {
+        filter.price = {};
+        if (minPrice) filter.price.$gte = parseFloat(minPrice);
+        if (maxPrice) filter.price.$lte = parseFloat(maxPrice);
+    }
+    
+    // Add search functionality
+    if (search && search.trim()) {
+        const searchRegex = new RegExp(search.trim(), 'i');
+        filter.$or = [
+            { name: searchRegex },
+            { description: searchRegex }
+        ];
+    }
+
+    // Build sort object
+    const sort = {};
+    const sortDirection = sortOrder === 'desc' ? -1 : 1;
+    sort[sortBy] = sortDirection;
+
+    const packages = await Package.find(filter)
+        .sort(sort)
+        .limit(limit * 1)
+        .skip((page - 1) * limit);
+
+    const total = await Package.countDocuments(filter);
+
+    res.status(200).json(
+        new ApiResponse(200, {
+            packages,
+            pagination: {
+                currentPage: parseInt(page),
+                totalPages: Math.ceil(total / limit),
+                totalPackages: total,
+                hasNext: page < Math.ceil(total / limit),
+                hasPrev: page > 1
+            }
+        }, "Admin packages retrieved successfully")
+    );
+});
+
 // Search packages (Public)
 export const searchPackages = asyncHandler(async (req, res) => {
     const { q, page = 1, limit = 10 } = req.query;

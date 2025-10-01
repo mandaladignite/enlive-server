@@ -61,7 +61,7 @@ router.post(
             .isLength({ min: 1, max: 100 })
             .withMessage("Product name is required and cannot exceed 100 characters"),
         body("category")
-            .isIn(["hair_care", "skin_care", "nail_care", "makeup", "tools", "accessories", "other"])
+            .isIn(["hair_care", "skin_care", "nail_care", "makeup", "tools", "accessories", "other", "Hair Care", "Skin Care", "Nail Care", "Makeup", "Tools", "Accessories", "Other"])
             .withMessage("Valid category is required"),
         body("price")
             .isFloat({ min: 0, max: 999999 })
@@ -73,11 +73,25 @@ router.post(
             .isLength({ min: 1, max: 1000 })
             .withMessage("Description is required and cannot exceed 1000 characters"),
         body("imageUrls")
+            .optional()
             .isArray({ min: 1 })
-            .withMessage("At least one image URL is required"),
+            .withMessage("If provided, at least one image URL is required"),
         body("imageUrls.*")
-            .isURL()
-            .withMessage("Each image URL must be a valid URL"),
+            .optional()
+            .custom((value) => {
+                // Allow both full URLs and relative paths
+                if (typeof value !== 'string') return false;
+                
+                // Check if it's a full URL
+                try {
+                    new URL(value);
+                    return true;
+                } catch {
+                    // Check if it's a valid relative path starting with /
+                    return value.startsWith('/') && value.length > 1;
+                }
+            })
+            .withMessage("Each image URL must be a valid URL or relative path"),
         body("brand")
             .optional()
             .isLength({ max: 50 })
@@ -212,8 +226,20 @@ router.put(
             .withMessage("At least one image URL is required"),
         body("imageUrls.*")
             .optional()
-            .isURL()
-            .withMessage("Each image URL must be a valid URL"),
+            .custom((value) => {
+                // Allow both full URLs and relative paths
+                if (typeof value !== 'string') return false;
+                
+                // Check if it's a full URL
+                try {
+                    new URL(value);
+                    return true;
+                } catch {
+                    // Check if it's a valid relative path starting with /
+                    return value.startsWith('/') && value.length > 1;
+                }
+            })
+            .withMessage("Each image URL must be a valid URL or relative path"),
         body("brand")
             .optional()
             .isLength({ max: 50 })

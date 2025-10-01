@@ -71,6 +71,14 @@ export const uploadMultiple = (fieldName = 'images', maxCount = 10) => {
         const uploadHandler = upload.array(fieldName, maxCount);
         
         uploadHandler(req, res, async (err) => {
+            console.log('=== MULTER MIDDLEWARE DEBUG ===');
+            console.log('req.method:', req.method);
+            console.log('req.url:', req.url);
+            console.log('req.headers.content-type:', req.headers['content-type']);
+            console.log('req.body after processing:', req.body);
+            console.log('req.files after processing:', req.files?.length);
+            console.log('req.files details:', req.files);
+            
             if (err instanceof multer.MulterError) {
                 if (err.code === 'LIMIT_FILE_SIZE') {
                     return next(new ApiError(400, 'File too large. Maximum size is 10MB'));

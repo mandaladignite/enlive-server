@@ -7,6 +7,11 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
+    "setup-env": "node scripts/setup-env.js",
+    "test-cloudinary": "node scripts/test-cloudinary.js",
+    "create-admin": "node scripts/create-admin.js",
+    "test-admin": "node scripts/test-admin-auth.js",
+    "test-dashboard": "node scripts/test-admin-dashboard.js",
     "test:api": "node test-appointment-api.js",
     "test:products": "node test-product-api.js",
     "test:cart-order": "node test-cart-order-api.js",
@@ -37,6 +42,7 @@
     "multer": "^2.0.2",
     "multer-storage-cloudinary": "^4.0.0",
     "node-fetch": "^3.3.2",
+    "nodemailer": "^7.0.6",
     "razorpay": "^2.9.2"
   },
   "devDependencies": {

@@ -8,10 +8,17 @@ export const validate = (req, res, next) => {
         const errorMessages = errors.array().map(error => ({
             field: error.path,
             message: error.msg,
-            value: error.value
+            value: error.value,
+            location: error.location
         }));
         
-        throw new ApiError(400, "Validation failed", errorMessages);
+        console.log('Validation errors:', errorMessages);
+        
+        return res.status(400).json({
+            success: false,
+            message: "Validation failed",
+            errors: errorMessages
+        });
     }
     
     next();

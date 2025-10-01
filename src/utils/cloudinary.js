@@ -1,40 +1,98 @@
 import { v2 as cloudinary } from 'cloudinary';
 import { ApiError } from './ApiError.js';
+import dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config();
 
 // Configure Cloudinary
-cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
-    secure: true
-});
+console.log('=== CLOUDINARY CONFIG DEBUG ===');
+console.log('Cloud name:', process.env.CLOUDINARY_CLOUD_NAME ? 'Set' : 'Missing');
+console.log('API key:', process.env.CLOUDINARY_API_KEY ? 'Set' : 'Missing');
+console.log('API secret:', process.env.CLOUDINARY_API_SECRET ? 'Set' : 'Missing');
+console.log('Cloudinary URL:', process.env.CLOUDINARY_URL ? 'Set' : 'Missing');
+
+// Validate required environment variables
+const requiredEnvVars = ['CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET'];
+const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+
+if (missingVars.length > 0 && !process.env.CLOUDINARY_URL) {
+    console.error('Missing required Cloudinary environment variables:', missingVars);
+    console.error('Please set the following environment variables:');
+    missingVars.forEach(varName => {
+        console.error(`  ${varName}=your_value_here`);
+    });
+    console.error('Or set CLOUDINARY_URL=cloudinary://api_key:api_secret@cloud_name');
+}
+
+// Prefer individual variables over URL format for better compatibility
+if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+    cloudinary.config({
+        cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+        api_key: process.env.CLOUDINARY_API_KEY,
+        api_secret: process.env.CLOUDINARY_API_SECRET,
+        secure: true
+    });
+    console.log('Using individual environment variables for configuration');
+} else if (process.env.CLOUDINARY_URL) {
+    cloudinary.config({
+        secure: true
+    });
+    console.log('Using CLOUDINARY_URL for configuration');
+} else {
+    console.error('Cloudinary configuration failed: Missing required environment variables');
+}
 
 // Upload image to Cloudinary
 export const uploadToCloudinary = async (file, options = {}) => {
     try {
+        // Validate Cloudinary configuration first
+        validateCloudinaryConfig();
+        
         const {
             folder = 'salon-gallery',
             category = 'general',
-            transformation = {},
-            quality = 'auto',
-            format = 'auto'
+            transformation = []
         } = options;
 
         const uploadOptions = {
             folder: `${folder}/${category}`,
             resource_type: 'image',
-            quality: quality,
-            format: format,
-            transformation: {
-                quality: 'auto',
-                fetch_format: 'auto',
+            transformation: [
+                { quality: 'auto' },
                 ...transformation
-            },
+            ],
             tags: [category, 'salon-gallery'],
+            context: { category: category },
             ...options
         };
 
-        const result = await cloudinary.uploader.upload(file.path, uploadOptions);
+        // Handle both file paths and buffers
+        let uploadSource;
+        if (file.buffer) {
+            // Memory storage (multer buffer)
+            uploadSource = `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
+        } else if (file.path) {
+            // Disk storage (file path)
+            uploadSource = file.path;
+        } else {
+            throw new Error('Invalid file object: must have either buffer or path');
+        }
+
+        console.log('=== CLOUDINARY UPLOAD DEBUG ===');
+        console.log('Upload source type:', file.buffer ? 'buffer' : 'path');
+        console.log('File mimetype:', file.mimetype);
+        console.log('File size:', file.size);
+        console.log('Upload options:', uploadOptions);
+        
+        const result = await cloudinary.uploader.upload(uploadSource, uploadOptions);
+        
+        console.log('Cloudinary upload result:', {
+            public_id: result.public_id,
+            secure_url: result.secure_url,
+            width: result.width,
+            height: result.height
+        });
         
         return {
             public_id: result.public_id,
@@ -49,7 +107,31 @@ export const uploadToCloudinary = async (file, options = {}) => {
             signature: result.signature
         };
     } catch (error) {
-        throw new ApiError(500, `Cloudinary upload failed: ${error.message}`);
+        console.error('Cloudinary upload error details:', {
+            message: error.message,
+            http_code: error.http_code,
+            name: error.name,
+            status: error.status,
+            statusCode: error.statusCode
+        });
+        
+        // Provide more specific error messages
+        let errorMessage = 'Cloudinary upload failed';
+        if (error.http_code === 401) {
+            errorMessage = 'Cloudinary authentication failed. Please check your API credentials.';
+        } else if (error.http_code === 400) {
+            errorMessage = 'Invalid upload request. Please check your file format and size.';
+        } else if (error.http_code === 403) {
+            errorMessage = 'Cloudinary access forbidden. Please check your account permissions.';
+        } else if (error.http_code === 404) {
+            errorMessage = 'Cloudinary service not found. Please check your configuration.';
+        } else if (error.http_code >= 500) {
+            errorMessage = 'Cloudinary server error. Please try again later.';
+        } else if (error.message) {
+            errorMessage = `Cloudinary upload failed: ${error.message}`;
+        }
+        
+        throw new ApiError(500, errorMessage);
     }
 };
 
@@ -189,6 +271,20 @@ export const generateResponsiveUrls = (publicId, baseWidth = 800) => {
             ]
         })
     }));
+};
+
+// Validate Cloudinary configuration
+export const validateCloudinaryConfig = () => {
+    const hasUrl = !!process.env.CLOUDINARY_URL;
+    const hasIndividual = !!(process.env.CLOUDINARY_CLOUD_NAME && 
+                            process.env.CLOUDINARY_API_KEY && 
+                            process.env.CLOUDINARY_API_SECRET);
+    
+    if (!hasUrl && !hasIndividual) {
+        throw new ApiError(500, 'Cloudinary configuration is missing. Please set up your environment variables.');
+    }
+    
+    return true;
 };
 
 // Validate image file

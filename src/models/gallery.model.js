@@ -16,8 +16,8 @@ const gallerySchema = new mongoose.Schema({
         type: String,
         required: [true, "Category is required"],
         enum: {
-            values: ["Hair", "Skin", "Nail", "Bridal"],
-            message: "Category must be one of: Hair, Skin, Nail, Bridal"
+            values: ["Hair", "Skin", "Nail", "Body"],
+            message: "Category must be one of: Hair, Skin, Nail, Body"
         }
     },
     subcategory: {
@@ -52,11 +52,6 @@ const gallerySchema = new mongoose.Schema({
         type: String,
         required: [true, "Original file name is required"]
     },
-    fileSize: {
-        type: Number,
-        required: [true, "File size is required"],
-        min: [0, "File size cannot be negative"]
-    },
     dimensions: {
         width: {
             type: Number,
@@ -90,14 +85,6 @@ const gallerySchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
         required: [true, "Uploader ID is required"]
-    },
-    views: {
-        type: Number,
-        default: 0
-    },
-    likes: {
-        type: Number,
-        default: 0
     },
     // SEO fields
     altText: {
@@ -139,8 +126,6 @@ gallerySchema.index({ tags: 1 });
 gallerySchema.index({ isFeatured: 1, isActive: 1 });
 gallerySchema.index({ uploadedBy: 1 });
 gallerySchema.index({ createdAt: -1 });
-gallerySchema.index({ views: -1 });
-gallerySchema.index({ likes: -1 });
 gallerySchema.index({ sortOrder: 1 });
 
 // Text index for search functionality
@@ -159,13 +144,6 @@ gallerySchema.virtual('aspectRatio').get(function() {
     return null;
 });
 
-// Virtual for file size in MB
-gallerySchema.virtual('fileSizeMB').get(function() {
-    if (this.fileSize) {
-        return (this.fileSize / (1024 * 1024)).toFixed(2);
-    }
-    return null;
-});
 
 // Virtual for image dimensions string
 gallerySchema.virtual('dimensionsString').get(function() {
@@ -229,9 +207,6 @@ gallerySchema.statics.getGalleryStats = function() {
             $group: {
                 _id: null,
                 totalImages: { $sum: 1 },
-                totalViews: { $sum: "$views" },
-                totalLikes: { $sum: "$likes" },
-                totalFileSize: { $sum: "$fileSize" },
                 categoryStats: {
                     $push: {
                         category: "$category",
@@ -244,10 +219,6 @@ gallerySchema.statics.getGalleryStats = function() {
             $project: {
                 _id: 0,
                 totalImages: 1,
-                totalViews: 1,
-                totalLikes: 1,
-                totalFileSize: 1,
-                averageFileSize: { $divide: ["$totalFileSize", "$totalImages"] },
                 categoryStats: 1
             }
         }
@@ -262,8 +233,6 @@ gallerySchema.statics.getCategoryBreakdown = function() {
             $group: {
                 _id: "$category",
                 count: { $sum: 1 },
-                totalViews: { $sum: "$views" },
-                totalLikes: { $sum: "$likes" },
                 featuredCount: {
                     $sum: { $cond: [{ $eq: ["$isFeatured", true] }, 1, 0] }
                 }
@@ -273,17 +242,6 @@ gallerySchema.statics.getCategoryBreakdown = function() {
     ]);
 };
 
-// Instance method to increment views
-gallerySchema.methods.incrementViews = function() {
-    this.views += 1;
-    return this.save();
-};
-
-// Instance method to toggle like
-gallerySchema.methods.toggleLike = function() {
-    this.likes += 1;
-    return this.save();
-};
 
 // Instance method to update sort order
 gallerySchema.methods.updateSortOrder = function(newOrder) {
@@ -300,9 +258,6 @@ gallerySchema.methods.getImageInfo = function() {
         subcategory: this.subcategory,
         imageUrl: this.imageUrl,
         dimensions: this.dimensionsString,
-        fileSize: this.fileSizeMB,
-        views: this.views,
-        likes: this.likes,
         isFeatured: this.isFeatured,
         createdAt: this.createdAt
     };

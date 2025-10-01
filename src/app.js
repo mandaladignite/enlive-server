@@ -15,6 +15,10 @@ import addressRoutes from "./routes/address.route.js"
 import galleryRoutes from "./routes/gallery.route.js"
 import whatsappRoutes from "./routes/whatsapp.route.js"
 import reviewRoutes from "./routes/review.route.js"
+import enquiryRoutes from "./routes/enquiry.route.js"
+import adminRoutes from "./routes/admin.route.js"
+import testRoutes from "./routes/test.route.js"
+import { errorHandler } from "./middleware/errorHandler.middleware.js"
 
 const app = express()
 
@@ -23,8 +27,15 @@ app.use(cors({
     credentials: true
 }))
 
-app.use(express.json({limit: "16kb"}))
-app.use(express.urlencoded({extended: true, limit: "16kb"}))
+// Skip JSON parsing for file upload routes
+app.use((req, res, next) => {
+    if (req.path.startsWith('/gallery/upload')) {
+        return next();
+    }
+    express.json({limit: "50mb"})(req, res, next);
+})
+
+app.use(express.urlencoded({extended: true, limit: "50mb"}))
 app.use(express.static("public"))
 app.use(cookieParser())
 
@@ -43,6 +54,9 @@ app.use("/addresses", addressRoutes)
 app.use("/gallery", galleryRoutes)
 app.use("/whatsapp", whatsappRoutes)
 app.use("/reviews", reviewRoutes)
+app.use("/enquiries", enquiryRoutes)
+app.use("/admin", adminRoutes)
+app.use("/test", testRoutes)
 
 // Health check endpoint
 app.get("/health", (req, res) => {
@@ -60,5 +74,8 @@ app.use((req, res) => {
         message: "Route not found"
     })
 })
+
+// Error handler
+app.use(errorHandler)
 
 export {app}

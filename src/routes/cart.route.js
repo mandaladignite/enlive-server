@@ -44,6 +44,7 @@ router.post(
             .optional()
             .isInt({ min: 1, max: 100 })
             .withMessage("Quantity must be between 1 and 100")
+            .default(1)
     ],
     validate,
     customerAndAdmin,

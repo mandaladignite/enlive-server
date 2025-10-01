@@ -1,6 +1,7 @@
 import express from "express";
 import {
     getAllPackages,
+    getAllPackagesAdmin,
     getPackage,
     getPopularPackages,
     getPackagesByPriceRange,
@@ -310,6 +311,52 @@ router.patch(
     validate,
     adminOnly,
     updateSortOrder
+);
+
+// Get all packages for admin (Admin only)
+router.get(
+    "/admin/all",
+    [
+        query("isActive")
+            .optional()
+            .isBoolean()
+            .withMessage("isActive must be a boolean"),
+        query("isPopular")
+            .optional()
+            .isBoolean()
+            .withMessage("isPopular must be a boolean"),
+        query("minPrice")
+            .optional()
+            .isFloat({ min: 0 })
+            .withMessage("minPrice must be a positive number"),
+        query("maxPrice")
+            .optional()
+            .isFloat({ min: 0 })
+            .withMessage("maxPrice must be a positive number"),
+        query("sortBy")
+            .optional()
+            .isIn(["sortOrder", "price", "name", "createdAt"])
+            .withMessage("Invalid sortBy field"),
+        query("sortOrder")
+            .optional()
+            .isIn(["asc", "desc"])
+            .withMessage("sortOrder must be 'asc' or 'desc'"),
+        query("page")
+            .optional()
+            .isInt({ min: 1 })
+            .withMessage("Page must be a positive integer"),
+        query("limit")
+            .optional()
+            .isInt({ min: 1, max: 100 })
+            .withMessage("Limit must be between 1 and 100"),
+        query("search")
+            .optional()
+            .isLength({ min: 1 })
+            .withMessage("Search query must not be empty")
+    ],
+    validate,
+    adminOnly,
+    getAllPackagesAdmin
 );
 
 // Get package statistics (Admin only)
